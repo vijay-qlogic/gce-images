@@ -6,7 +6,6 @@
  */
 
 import * as assert from 'assert';
-import * as async from 'async';
 import {GCEImages, Image, ImageMap, ImagesMap} from '../src';
 
 const gceImages = new GCEImages();
@@ -21,24 +20,26 @@ describe('system tests', () => {
     stable: {},
   };
 
-  before(done => {
+  before(async () => {
     // Get counts.
-    async.forEachOf(
-        allImagesByOsName,
+    const gceImagesGetAll = (key: string) => {
+      return new Promise((resolve, reject) => {
+        gceImages.getAll({deprecated: key === 'deprecated'}, (err, images) => {
+          if (err) {
+            reject(err);
+          }
+          allImagesByOsName[key] = images as ImagesMap;
+          resolve();
+        });
+      });
+    };
 
-        (_, key, next) => {
-          gceImages.getAll(
-              {deprecated: key === 'deprecated'}, (err, images) => {
-                if (err) {
-                  next(err);
-                  return;
-                }
-                allImagesByOsName[key] = images as ImagesMap;
-                next();
-              });
-        },
-
-        done);
+    let key;
+    for (key in allImagesByOsName) {
+      if (allImagesByOsName[key]) {
+        await gceImagesGetAll(key);
+      }
+    }
   });
 
   describe('all', () => {
